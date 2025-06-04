@@ -2,9 +2,13 @@ import streamlit as st
 import joblib
 import pandas as pd
 
-def load_model():
-    model = joblib.load('fake_news_model.pkl')
-    vectorizer = joblib.load('tfidf_vectorizer.pkl')
+def load_model(language='English'):
+    if language == 'Portuguese':
+        model = joblib.load('fake_news_model_pt.pkl')
+        vectorizer = joblib.load('tfidf_vectorizer_pt.pkl')
+    else:
+        model = joblib.load('fake_news_model.pkl')
+        vectorizer = joblib.load('tfidf_vectorizer.pkl')
     return model, vectorizer
 
 def predict_news(news_text, model, vectorizer):
@@ -21,12 +25,13 @@ def main():
     st.title('Fake News Detector')
     st.write('Enter a news article below to check if it is fake or true.')
 
+    language = st.selectbox('Select language', ['English', 'Portuguese'])
     news_text = st.text_area('News Article Text', height=200)
     if st.button('Classify'):
         if news_text.strip() == '':
             st.warning('Please enter some text.')
         else:
-            model, vectorizer = load_model()
+            model, vectorizer = load_model(language)
             prediction = predict_news(news_text, model, vectorizer)
             if prediction == 0:
                 st.error('This news is predicted to be FAKE.')

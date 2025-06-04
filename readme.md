@@ -47,3 +47,47 @@ FakeNewsDetector/
 
 - You can retrain the model anytime by running `python train_model.py` again.
 - Make sure `Fake.csv` and `True.csv` have a `text` column containing the news content.
+
+## Portuguese Fake News Detection
+
+This project now supports fake news detection in Portuguese using the `FakeTrueBr_corpus.csv` dataset.
+
+### Training the Portuguese Model
+
+1. Place `FakeTrueBr_corpus.csv` in the project directory.
+2. Run the training script:
+   ```
+   python train_model_pt.py
+   ```
+   This will train the Portuguese model and save `fake_news_model_pt.pkl` and `tfidf_vectorizer_pt.pkl`.
+
+### Using the Web App
+
+- The Streamlit app now includes a language selector (English/Portuguese).
+- Select your desired language before classifying news articles.
+- The app will use the appropriate model and preprocessing pipeline for the selected language.
+
+## Updated Project Structure
+
+```
+FakeNewsDetector/
+├── Fake.csv
+├── True.csv
+├── FakeTrueBr_corpus.csv
+├── data_preprocessing.py
+├── train_model.py
+├── train_model_pt.py
+├── app.py
+├── requirements.txt
+├── fake_news_model.pkl
+├── tfidf_vectorizer.pkl
+├── fake_news_model_pt.pkl
+├── tfidf_vectorizer_pt.pkl
+└── README.md
+```
+
+## Notes
+
+- You can retrain the English or Portuguese models anytime by running their respective training scripts.
+- For English, ensure `Fake.csv` and `True.csv` have a `text` column.
+- For Portuguese, `FakeTrueBr_corpus.csv` should have `fake` and `true` columns containing the news content.
