@@ -1,40 +1,52 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix
 import joblib
-from data_preprocessing import load_and_prepare_data, preprocess_dataframe
+from data_preprocessing import load_and_prepare_data
 
-def train_and_save_model():
-    # Load and preprocess data
-    df = load_and_prepare_data()
-    df = preprocess_dataframe(df)
+# ====== Configurações por idioma ======
+LANG_SETTINGS = {
+    'en': {
+        'use_title': False,
+        'model_out': 'fake_news_model.pkl',
+        'vectorizer_out': 'tfidf_vectorizer.pkl'
+    },
+    'pt': {
+        'use_title': True,
+        'model_out': 'fake_news_model_pt.pkl',
+        'vectorizer_out': 'tfidf_vectorizer_pt.pkl'
+    }
+}
 
+for language in ['en', 'pt']:
+    print(f"\nTreinando modelo de regressão logística para: {language.upper()}")
+
+    # ====== Carregamento e preprocessamento ======
+    df = load_and_prepare_data(language=language, use_title=LANG_SETTINGS[language]['use_title'], balance_classes=True)
     X = df['text']
     y = df['label']
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 
-    # Vectorize text
-    vectorizer = TfidfVectorizer(stop_words='english', max_df=0.7)
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
+    # ====== Vetorização ======
+    vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1,2))
+    X_train_vec = vectorizer.fit_transform(X_train)
+    X_test_vec = vectorizer.transform(X_test)
 
-    # Train classifier
-    clf = LogisticRegression(max_iter=1000)
-    clf.fit(X_train_tfidf, y_train)
+    # ====== Modelo ======
+    model = LogisticRegression(max_iter=1000, class_weight='balanced')
+    model.fit(X_train_vec, y_train)
 
-    # Evaluate
-    y_pred = clf.predict(X_test_tfidf)
-    print('Accuracy:', accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred))
+    # ====== Avaliação ======
+    y_pred = model.predict(X_test_vec)
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=['Fake', 'Real']))
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
 
-    # Save model and vectorizer
-    joblib.dump(clf, 'fake_news_model.pkl')
-    joblib.dump(vectorizer, 'tfidf_vectorizer.pkl')
-    print('Model and vectorizer saved.')
-
-if __name__ == '__main__':
-    train_and_save_model()
+    # ====== Salvando ======
+    joblib.dump(model, LANG_SETTINGS[language]['model_out'])
+    joblib.dump(vectorizer, LANG_SETTINGS[language]['vectorizer_out'])
+    print(f"Modelos salvos para {language}: {LANG_SETTINGS[language]['model_out']}, {LANG_SETTINGS[language]['vectorizer_out']}")
