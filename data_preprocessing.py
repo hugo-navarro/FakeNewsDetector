@@ -70,7 +70,6 @@ def load_and_prepare_data(language='en', fake_path='Fake.csv', true_path='True.c
     after = len(df)
     print(f"→ Removidas {before - after} duplicatas ({before} → {after}).")
 
-    # Restante do código mantido igual
     print("Distribuição antes do augmentation:\n", df['label'].value_counts())
 
     if do_augment:
@@ -107,7 +106,7 @@ def load_and_prepare_data(language='en', fake_path='Fake.csv', true_path='True.c
     return df
 
 if __name__ == '__main__':
-    # Exemplo de uso para português
+    # Uso para português
     df_pt = load_and_prepare_data(
         language='pt',
         use_title=True,
@@ -115,7 +114,7 @@ if __name__ == '__main__':
     )
     print("\nExemplo de amostras PT:", df_pt.head())
 
-    # Exemplo de uso para inglês
+    # Uso para inglês
     df_en = load_and_prepare_data(
         language='en',
         use_title=False,
