@@ -32,7 +32,7 @@ This project uses machine learning to classify news articles as fake or true. It
 
 1. Go to the "My Extensions" section on Google Chrome settings.
 2. Turn on the "Developer mode".
-3. Click on "Load Unpacked.
+3. Click on "Load Unpacked".
 4. Then select the directory "Google Chrome Extension" from this project.
 5. Now you should have the extension on your browser.
 6. But for it to work you need to go to the "Google Chrome Extension" directory and run the app.py:
