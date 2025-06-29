@@ -28,6 +28,19 @@ This project uses machine learning to classify news articles as fake or true. It
 2. Open the provided local URL in your browser (usually http://localhost:8501).
 3. Paste or type a news article in the text box and click "Classify" to see the prediction.
 
+## Adding the Chrome Extension to your browser
+
+1. Go to the "My Extensions" section on Google Chrome settings.
+2. Turn on the "Developer mode".
+3. Click on "Load Unpacked".
+4. Then select the directory "Google Chrome Extension" from this project.
+5. Now you should have the extension on your browser.
+6. But for it to work you need to go to the "Google Chrome Extension" directory and run the app.py:
+   ```
+   python app.py
+   ```
+8. Now you can open the extension and paste or type a news article in the text box and click "Check" to see the prediction.
+
 ## Project Structure
 
 ```

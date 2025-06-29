@@ -1,4 +1,14 @@
+flask
 pandas
 scikit-learn
 joblib
+nltk
+matplotlib
+seaborn
+tqdm
+transformers
+torch
+nlpaug
+sentencepiece
+protobuf
 streamlit

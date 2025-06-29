@@ -1,40 +1,66 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
+from sklearn.metrics import classification_report, confusion_matrix
 import joblib
-from data_preprocessing import load_and_prepare_data, preprocess_dataframe
+import matplotlib.pyplot as plt
+import seaborn as sns
+from data_preprocessing import load_and_prepare_data
 
-def train_and_save_model():
-    # Load and preprocess data
-    df = load_and_prepare_data()
-    df = preprocess_dataframe(df)
+# ====== Configurações por idioma ======
+LANG_SETTINGS = {
+    'en': {
+        'use_title': False,
+        'model_out': 'fake_news_model.pkl',
+        'vectorizer_out': 'tfidf_vectorizer.pkl'
+    },
+    'pt': {
+        'use_title': True,
+        'model_out': 'fake_news_model_pt.pkl',
+        'vectorizer_out': 'tfidf_vectorizer_pt.pkl'
+    }
+}
 
+for language in ['en', 'pt']:
+    print(f"\nTreinando modelo de regressão logística com validação cruzada para: {language.upper()}")
+
+    # ====== Carregamento e preprocessamento ======
+    df = load_and_prepare_data(language=language, use_title=LANG_SETTINGS[language]['use_title'], balance_classes=True)
     X = df['text']
     y = df['label']
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # ====== Vetorização ======
+    vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1,2))
+    X_vec = vectorizer.fit_transform(X)
 
-    # Vectorize text
-    vectorizer = TfidfVectorizer(stop_words='english', max_df=0.7)
-    X_train_tfidf = vectorizer.fit_transform(X_train)
-    X_test_tfidf = vectorizer.transform(X_test)
+    # ====== Modelo ======
+    model = LogisticRegression(max_iter=1000, class_weight='balanced')
 
-    # Train classifier
-    clf = LogisticRegression(max_iter=1000)
-    clf.fit(X_train_tfidf, y_train)
+    # ====== Validação cruzada (Stratified K-Fold) ======
+    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+    y_pred = cross_val_predict(model, X_vec, y, cv=skf)
 
-    # Evaluate
-    y_pred = clf.predict(X_test_tfidf)
-    print('Accuracy:', accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred))
+    # ====== Avaliação ======
+    print("\nClassification Report:")
+    print(classification_report(y, y_pred, target_names=['Fake', 'Real']))
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(y, y_pred))
 
-    # Save model and vectorizer
-    joblib.dump(clf, 'fake_news_model.pkl')
-    joblib.dump(vectorizer, 'tfidf_vectorizer.pkl')
-    print('Model and vectorizer saved.')
+    # ====== Matriz de confusão relativa ======
+    conf_matrix = confusion_matrix(y, y_pred, normalize='true')
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(conf_matrix, annot=True, fmt='.4f', cmap='Blues', xticklabels=['Fake', 'Real'], yticklabels=['Fake', 'Real'])
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title(f"Confusion Matrix - {language.upper()} (Normalized)")
+    plt.savefig(f'matrix_logreg_{language}_relative.png')
+    plt.show()
 
-if __name__ == '__main__':
-    train_and_save_model()
+    # ====== Treinamento final com todos os dados ======
+    model.fit(X_vec, y)
+
+    # ====== Salvando ======
+    joblib.dump(model, LANG_SETTINGS[language]['model_out'])
+    joblib.dump(vectorizer, LANG_SETTINGS[language]['vectorizer_out'])
+    print(f"Modelos salvos para {language}: {LANG_SETTINGS[language]['model_out']}, {LANG_SETTINGS[language]['vectorizer_out']}")
