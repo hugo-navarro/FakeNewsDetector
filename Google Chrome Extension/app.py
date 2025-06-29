@@ -1,45 +1,50 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
+from data_preprocessing import clean_text, download_nltk_resources
 
+# Inicializa app Flask
 app = Flask(__name__)
 
-def load_model(language='English'):
-    if language == 'Portuguese':
-        model = joblib.load('fake_news_model_pt.pkl')
-        vectorizer = joblib.load('tfidf_vectorizer_pt.pkl')
-    else:
-        model = joblib.load('fake_news_model.pkl')
-        vectorizer = joblib.load('tfidf_vectorizer.pkl')
-    return model, vectorizer
+# Baixa recursos necessários do NLTK
+download_nltk_resources()
 
-def predict_news(news_text, model, vectorizer):
-    # Preprocess input
-    text_df = pd.DataFrame({'text': [news_text]})
-    # Use the same cleaning as in training
-    from data_preprocessing import preprocess_dataframe
-    text_df = preprocess_dataframe(text_df)
-    X = vectorizer.transform(text_df['text'])
-    prediction = model.predict(X)[0]
-    return prediction
+# Carrega modelos e vetorizadores
+models = {
+    'English': {
+        'model': joblib.load('fake_news_model.pkl'),
+        'vectorizer': joblib.load('tfidf_vectorizer.pkl'),
+        'lang_code': 'en'
+    },
+    'Portuguese': {
+        'model': joblib.load('fake_news_model_pt.pkl'),
+        'vectorizer': joblib.load('tfidf_vectorizer_pt.pkl'),
+        'lang_code': 'pt'
+    }
+}
 
 @app.route('/validate', methods=['POST'])
 def validate():
     data = request.get_json()
-    language = data.get("language", '')
-    news_text = data.get('texto', '')
+    text = data.get('texto', '')
+    language = data.get('language', 'English')
 
-    answer = 'Please enter some text.'
+    if not text or len(text.strip()) < 20:
+        return jsonify({'resposta': 'Please insert a longer news text.'})
 
-    if news_text.strip() != '':
-        model, vectorizer = load_model(language)
-        prediction = predict_news(news_text, model, vectorizer)
-        if prediction == 0:
-            answer = 'This news is predicted to be FAKE.'
-        else:
-            answer = 'This news is predicted to be TRUE.'
-    return jsonify({'resposta': answer})
+    if language not in models:
+        return jsonify({'resposta': 'Unsupported language selected.'})
 
+    # Limpeza e vetorização
+    lang_info = models[language]
+    cleaned_text = clean_text(text, language=lang_info['lang_code'])
+    vec_text = lang_info['vectorizer'].transform([cleaned_text])
+
+    # Predição
+    prediction = lang_info['model'].predict(vec_text)[0]
+    resposta = 'This news is predicted to be TRUE.' if prediction == 1 else 'This news is predicted to be FAKE.'
+
+    return jsonify({'resposta': resposta})
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(debug=True)
