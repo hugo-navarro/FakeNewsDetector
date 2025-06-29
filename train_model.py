@@ -1,9 +1,11 @@
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.metrics import classification_report, confusion_matrix
 import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
 from data_preprocessing import load_and_prepare_data
 
 # ====== Configurações por idioma ======
@@ -21,30 +23,42 @@ LANG_SETTINGS = {
 }
 
 for language in ['en', 'pt']:
-    print(f"\nTreinando modelo de regressão logística para: {language.upper()}")
+    print(f"\nTreinando modelo de regressão logística com validação cruzada para: {language.upper()}")
 
     # ====== Carregamento e preprocessamento ======
     df = load_and_prepare_data(language=language, use_title=LANG_SETTINGS[language]['use_title'], balance_classes=True)
     X = df['text']
     y = df['label']
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
-
     # ====== Vetorização ======
     vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1,2))
-    X_train_vec = vectorizer.fit_transform(X_train)
-    X_test_vec = vectorizer.transform(X_test)
+    X_vec = vectorizer.fit_transform(X)
 
     # ====== Modelo ======
     model = LogisticRegression(max_iter=1000, class_weight='balanced')
-    model.fit(X_train_vec, y_train)
+
+    # ====== Validação cruzada (Stratified K-Fold) ======
+    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+    y_pred = cross_val_predict(model, X_vec, y, cv=skf)
 
     # ====== Avaliação ======
-    y_pred = model.predict(X_test_vec)
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, target_names=['Fake', 'Real']))
+    print(classification_report(y, y_pred, target_names=['Fake', 'Real']))
     print("\nConfusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    print(confusion_matrix(y, y_pred))
+
+    # ====== Matriz de confusão relativa ======
+    conf_matrix = confusion_matrix(y, y_pred, normalize='true')
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(conf_matrix, annot=True, fmt='.4f', cmap='Blues', xticklabels=['Fake', 'Real'], yticklabels=['Fake', 'Real'])
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title(f"Confusion Matrix - {language.upper()} (Normalized)")
+    plt.savefig(f'matrix_logreg_{language}_relative.png')
+    plt.show()
+
+    # ====== Treinamento final com todos os dados ======
+    model.fit(X_vec, y)
 
     # ====== Salvando ======
     joblib.dump(model, LANG_SETTINGS[language]['model_out'])

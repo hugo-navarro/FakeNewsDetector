@@ -13,6 +13,7 @@ from collections import Counter
 import os
 
 # ======= Configurações por idioma =======
+# Define modelo, parâmetros de ajuste fino e nome de arquivo para cada idioma
 LANG_SETTINGS = {
     'en': {
         'model_name': 'prajjwal1/bert-tiny',
@@ -48,7 +49,7 @@ for language in ['en', 'pt']:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Usando dispositivo: {device}")
-
+    # Carregamento e preparação dos dados com limpeza e balanceamento
     df = load_and_prepare_data(
         language=language,
         use_title=False,
@@ -58,14 +59,14 @@ for language in ['en', 'pt']:
 
     X = df['text'].tolist()
     y = df['label'].tolist()
-
+    # Separação dos dados em treino, validação e teste
     from sklearn.model_selection import train_test_split
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
     X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp, test_size=0.3, stratify=y_temp, random_state=42)
 
     def avg_length(texts):
         return np.mean([len(text) for text in texts])
-
+    # Estatísticas básicas pós-split
     print("\n=== Verificação Pós-Split ===")
     print("Comprimento médio:")
     print(f"Treino: {avg_length(X_train):.1f} chars")
@@ -75,12 +76,12 @@ for language in ['en', 'pt']:
     print("Distribuição das classes no treino:", Counter(y_train))
     print("Distribuição das classes no val:", Counter(y_valid))
     print("Distribuição das classes no test:", Counter(y_test))
-
+    # Tokenizador adequado ao idioma e modelo
     tokenizer = BertTokenizer.from_pretrained(model_name)
 
     def tokenize(texts):
         return tokenizer(texts, truncation=True, padding=True, max_length=params['max_length'], return_tensors="pt")
-
+    # Tokenização dos dados
     print("Tokenizando os dados...")
     train_encodings = tokenize(X_train)
     print("Tokenização do treino completa.")
@@ -88,7 +89,7 @@ for language in ['en', 'pt']:
     print("Tokenização de validação completa.")
     test_encodings = tokenize(X_test)
     print("Tokenização de teste completa.")
-
+    # Dataset personalizado para compatibilizar com o DataLoader
     class FakeNewsDataset(Dataset):
         def __init__(self, encodings, labels):
             self.encodings = encodings
@@ -99,13 +100,13 @@ for language in ['en', 'pt']:
             item = {key: val[idx] for key, val in self.encodings.items()}
             item['labels'] = self.labels[idx]
             return item
-
+    # Instanciando datasets e dataloaders
     train_dataset = FakeNewsDataset(train_encodings, y_train)
     valid_dataset = FakeNewsDataset(valid_encodings, y_valid)
     test_dataset = FakeNewsDataset(test_encodings, y_test)
 
     from torch.utils.data import WeightedRandomSampler
-
+    # Balanceamentos de classe com WeightedRandomSampler
     class_counts = np.bincount(y_train)
     class_weights = 1. / torch.tensor(class_counts, dtype=torch.float32)
     sample_weights = class_weights[y_train]
@@ -127,18 +128,18 @@ for language in ['en', 'pt']:
     train_loader = DataLoader(train_dataset, batch_size=params['batch_size'], shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=params['batch_size'])
     test_loader = DataLoader(test_dataset, batch_size=params['batch_size'])
-
+    # Configuração do modelo BERT para classificação binária
     config = BertConfig.from_pretrained(model_name, num_labels=2, hidden_dropout_prob=0.6, attention_probs_dropout_prob=0.6, classifier_dropout=0.5, layer_norm_eps=1e-6)
     model = BertForSequenceClassification.from_pretrained(model_name, config=config)
     model.to(device)
-
+    # Otimizador e agendador de taxa de aprendizado
     optimizer = optim.AdamW(model.parameters(), lr=params['learning_rate'], weight_decay=params['weight_decay'])
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
     total_steps = len(train_loader) * params['epochs']
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
     criterion = torch.nn.CrossEntropyLoss()
-
+    # Função de treino
     def train():
         model.train()
         total_loss, correct = 0, 0
@@ -159,7 +160,7 @@ for language in ['en', 'pt']:
             correct += (preds == labels).sum().item()
 
         return total_loss / len(train_loader), correct / len(train_dataset)
-
+    # Função de avaliação no conjunto de validação
     def evaluate():
         model.eval()
         total_loss, correct = 0, 0
@@ -177,7 +178,7 @@ for language in ['en', 'pt']:
                 correct += (preds == labels).sum().item()
 
         return total_loss / len(valid_loader), correct / len(valid_dataset)
-
+    # Loop de treinamento principal
     print("Iniciando treino...")
     for epoch in range(params['epochs']):
         print(f"Epoch {epoch+1}/{params['epochs']}")
@@ -187,10 +188,11 @@ for language in ['en', 'pt']:
         
         print(f"Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
         print(f"Valid Loss: {val_loss:.4f}, Accuracy: {val_acc:.4f}")
-
+    # Salvar pesos do modelo treinado
     torch.save(model.state_dict(), output_file)
     print(f"Modelo salvo em: {output_file}")
-
+    
+    # Avaliação no conjunto de teste
     model.eval()
     all_preds, all_labels, all_probs = [], [], []
     with torch.no_grad():
@@ -206,13 +208,14 @@ for language in ['en', 'pt']:
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
             all_probs.extend(probs.cpu().numpy())
-
+    # Relatório de classificação completo
     print("\nClassification Report:")
     print(classification_report(all_labels, all_preds, target_names=['Fake', 'Real']))
 
-    conf_matrix = confusion_matrix(all_labels, all_preds)
+    # ======= Matriz de confusão relativa =======
+    conf_matrix = confusion_matrix(all_labels, all_preds, normalize='true')
     plt.figure(figsize=(6, 5))
-    sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Fake', 'Real'], yticklabels=['Fake', 'Real'])
+    sns.heatmap(conf_matrix, annot=True, fmt='.4f', cmap='Blues', xticklabels=['Fake', 'Real'], yticklabels=['Fake', 'Real'])
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.title(f"Confusion Matrix - {language.upper()}")
