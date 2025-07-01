@@ -13,11 +13,16 @@ This project uses machine learning to classify news articles as fake or true. It
 ## Training the Model
 
 1. Place your dataset files (`Fake.csv` and `True.csv`) in the project directory.
-2. Run the training script:
+2. Run the training script for Regression Model:
    ```
    python train_model.py
    ```
-   This will train the model and save `fake_news_model.pkl` and `tfidf_vectorizer.pkl` in the project directory.
+   This will train the model and save `fake_news_model.pkl` and `tfidf_vectorizer.pkl` for english, and `fake_news_model_pt.pkl` and `tfidf_vectorizer_pt.pkl` for portuguese the project directory.
+3. Run the training script for BERT/Transformer Model:
+   ```
+   python transformer.py
+   ```
+   This will train the model and save `bert_finetuned_fake_news` (for english) and `bertimbau_finetuned_fake_news` (for portuguese) in the project directory.
 
 ## Running the Web App
 
@@ -58,21 +63,9 @@ FakeNewsDetector/
 
 ## Notes
 
-- You can retrain the model anytime by running `python train_model.py` again.
+- You can retrain the model anytime by running `python train_model.py` and `python transformer.py` again.
 - Make sure `Fake.csv` and `True.csv` have a `text` column containing the news content.
 
-## Portuguese Fake News Detection
-
-This project now supports fake news detection in Portuguese using the `FakeTrueBr_corpus.csv` dataset.
-
-### Training the Portuguese Model
-
-1. Place `FakeTrueBr_corpus.csv` in the project directory.
-2. Run the training script:
-   ```
-   python train_model_pt.py
-   ```
-   This will train the Portuguese model and save `fake_news_model_pt.pkl` and `tfidf_vectorizer_pt.pkl`.
 
 ### Using the Web App
 
@@ -89,7 +82,7 @@ FakeNewsDetector/
 ├── FakeTrueBr_corpus.csv
 ├── data_preprocessing.py
 ├── train_model.py
-├── train_model_pt.py
+├── transformer.py
 ├── app.py
 ├── requirements.txt
 ├── fake_news_model.pkl
@@ -104,3 +97,4 @@ FakeNewsDetector/
 - You can retrain the English or Portuguese models anytime by running their respective training scripts.
 - For English, ensure `Fake.csv` and `True.csv` have a `text` column.
 - For Portuguese, `FakeTrueBr_corpus.csv` should have `fake` and `true` columns containing the news content.
+- Please desconsider the archive train_model_pt. This is a legacy code.
